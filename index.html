@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buku Tamu Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .camera-container { position: relative; overflow: hidden; border-radius: 1rem; }
+        #video { transform: scaleX(-1); width: 100%; border-radius: 1rem; background: #000; }
+        #canvas { display: none; }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 50;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="loader" class="loading-overlay">
+        <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p class="text-blue-600 font-medium">Mengirim data...</p>
+        </div>
+    </div>
+
+    <div id="notification" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden transition-all duration-300">
+        <div id="notif-content" class="px-6 py-3 rounded-full shadow-lg text-white font-medium"></div>
+    </div>
+
+    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-blue-600 p-6 text-white text-center">
+            <h1 class="text-2xl font-bold">Buku Tamu Pengunjung</h1>
+            <p class="text-blue-100 text-sm mt-1">Silakan isi formulir di bawah ini dengan benar</p>
+        </div>
+
+        <form id="guestForm" class="p-6 space-y-6">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Lengkap Tamu</label>
+                    <input type="text" name="namaTamu" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Contoh: Budi Santoso">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nomor Telepon (WhatsApp)</label>
+                    <input type="tel" name="nomorTelepon" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="0812xxxxxx">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Asal Pengunjung</label>
+                    <select id="asalPengunjung" name="asalPengunjung" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        <option value="">-- Pilih Asal --</option>
+                        <option value="Orang Tua Murid">Orang Tua Murid</option>
+                        <option value="Lembaga/Instansi">Lembaga/Instansi</option>
+                    </select>
+                </div>
+
+                <div id="conditionalField" class="hidden">
+                    <label id="conditionalLabel" class="block text-sm font-semibold text-gray-700 mb-1"></label>
+                    <input type="text" id="conditionalInput" name="detailAsal" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Tujuan Kunjungan</label>
+                    <textarea name="tujuanKunjungan" required rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Sebutkan alasan kunjungan Anda"></textarea>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700">Foto Selfie</label>
+                <div class="camera-container">
+                    <video id="video" autoplay playsinline></video>
+                    <div id="photoPreview" class="hidden absolute inset-0 bg-black rounded-xl">
+                        <img id="capturedImage" class="w-full h-full object-cover rounded-xl" style="transform: scaleX(-1);">
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button type="button" id="btnCapture" class="flex-1 bg-gray-800 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.172-1.172A2 2 0 0010.122 3H9.878a2 2 0 00-1.414.586L7.293 4.707A1 1 0 016.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                        </svg>
+                        Ambil Foto
+                    </button>
+                    <button type="button" id="btnRetake" class="hidden flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-medium hover:bg-red-200 transition">
+                        Foto Ulang
+                    </button>
+                </div>
+                <input type="hidden" name="fotoData" id="fotoData" required>
+            </div>
+
+            <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
+                <input type="checkbox" id="pernyataan" name="pernyataan" required class="mt-1 h-5 w-5 text-blue-600 border-gray-300 rounded">
+                <label for="pernyataan" class="text-sm text-gray-600">
+                    Saya menyatakan bahwa data yang saya berikan adalah benar dan saya bersedia mematuhi peraturan di lingkungan ini.
+                </label>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98]">
+                Simpan & Selesai
+            </button>
+        </form>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const btnCapture = document.getElementById('btnCapture');
+        const btnRetake = document.getElementById('btnRetake');
+        const photoPreview = document.getElementById('photoPreview');
+        const capturedImage = document.getElementById('capturedImage');
+        const fotoDataInput = document.getElementById('fotoData');
+
+        // Ganti URL ini dengan URL Web App dari Google Apps Script Anda nanti
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyBTGTfyhwRAFlclKu6ZfnKwd68Bfls9GyLyIHj56ht29FZOmg_rnO9SwHPpSIfkJV6SQ/exec";
+
+        // Inisialisasi Kamera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                showNotification("Gagal mengakses kamera. Pastikan izin kamera diberikan.", "bg-red-500");
+            }
+        }
+
+        btnCapture.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Kompresi Gambar (Quality 0.7 = ~70%)
+            // Canvas to JPEG ensures smaller size compared to PNG
+            let quality = 0.7;
+            let dataUrl = canvas.toDataURL('image/jpeg', quality);
+            
+            // Cek ukuran, jika masih > 1000KB, kurangi kualitas
+            while (dataUrl.length > 1000 * 1024 && quality > 0.1) {
+                quality -= 0.1;
+                dataUrl = canvas.toDataURL('image/jpeg', quality);
+            }
+
+            capturedImage.src = dataUrl;
+            fotoDataInput.value = dataUrl;
+            
+            photoPreview.classList.remove('hidden');
+            btnRetake.classList.remove('hidden');
+            btnCapture.classList.add('hidden');
+        });
+
+        btnRetake.addEventListener('click', () => {
+            photoPreview.classList.add('hidden');
+            btnRetake.classList.add('hidden');
+            btnCapture.classList.remove('hidden');
+            fotoDataInput.value = "";
+        });
+
+        const asalSelect = document.getElementById('asalPengunjung');
+        const condField = document.getElementById('conditionalField');
+        const condLabel = document.getElementById('conditionalLabel');
+        const condInput = document.getElementById('conditionalInput');
+
+        asalSelect.addEventListener('change', (e) => {
+            const value = e.target.value;
+            if (value === "Orang Tua Murid") {
+                condField.classList.remove('hidden');
+                condLabel.innerText = "Nama Murid";
+                condInput.placeholder = "Masukkan nama lengkap murid";
+                condInput.required = true;
+            } else if (value === "Lembaga/Instansi") {
+                condField.classList.remove('hidden');
+                condLabel.innerText = "Nama Instansi/Lembaga";
+                condInput.placeholder = "Masukkan nama instansi Anda";
+                condInput.required = true;
+            } else {
+                condField.classList.add('hidden');
+                condInput.required = false;
+            }
+        });
+
+        const form = document.getElementById('guestForm');
+        const loader = document.getElementById('loader');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!fotoDataInput.value) {
+                showNotification("Harap ambil foto selfie terlebih dahulu!", "bg-orange-500");
+                return;
+            }
+
+            loader.style.display = 'flex';
+
+            const formData = new FormData(form);
+            const data = {};
+            formData.forEach((value, key) => data[key] = value);
+            
+            // Tambahkan Timestamp
+            data.timestamp = new Date().toLocaleString('id-ID');
+
+            try {
+                // Catatan: Ini akan error jika SCRIPT_URL belum diisi.
+                // Anda harus mengdeploy kode Google Apps Script di bawah terlebih dahulu.
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Penting untuk Apps Script
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                showNotification("Berhasil! Data Anda telah tersimpan.", "bg-green-500");
+                form.reset();
+                btnRetake.click(); // Reset foto
+                condField.classList.add('hidden');
+                
+            } catch (error) {
+                console.error(error);
+                showNotification("Terjadi kesalahan saat mengirim data.", "bg-red-500");
+            } finally {
+                loader.style.display = 'none';
+            }
+        });
+
+        function showNotification(msg, colorClass) {
+            const notif = document.getElementById('notification');
+            const content = document.getElementById('notif-content');
+            content.innerText = msg;
+            content.className = `px-6 py-3 rounded-full shadow-lg text-white font-medium ${colorClass}`;
+            notif.classList.remove('hidden');
+            setTimeout(() => notif.classList.add('hidden'), 5000);
+        }
+
+        // Start camera on load
+        window.onload = startCamera;
+    </script>
+</body>
+</html>
